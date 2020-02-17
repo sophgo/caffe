@@ -1708,6 +1708,9 @@ message PoolingParameter {
   // succeeding dimensions are treated as "spatial".
   optional int32 axis = 14 [default = 1];
 
+  // to compatible with some model, should use round_mode in the future
+  optional bool ceil_mode = 18 [default = true];
+
   // How to calculate the output size - using ceil (default) or floor rounding.
   enum RoundMode {
     CEIL = 0;

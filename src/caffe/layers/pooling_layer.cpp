@@ -36,6 +36,11 @@ void PoolingLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
       << "Stride is stride OR stride_h and stride_w are required.";
   global_pooling_ = pool_param.global_pooling();
   round_mode_ = pool_param.round_mode();
+  ceil_mode_ = pool_param.ceil_mode();
+  // if ceil_mode or round_mode is not the default value, use it
+  if (ceil_mode_ == false)
+    round_mode_ = PoolingParameter_RoundMode_FLOOR;
+
   if (global_pooling_) {
     kernel_h_ = bottom[0]->height();
     kernel_w_ = bottom[0]->width();
