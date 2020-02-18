@@ -36,6 +36,11 @@ void PoolingLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
       << "Stride is stride OR stride_h and stride_w are required.";
   global_pooling_ = pool_param.global_pooling();
   round_mode_ = pool_param.round_mode();
+  ceil_mode_ = pool_param.ceil_mode();
+  // if ceil_mode or round_mode is not the default value, use it
+  if (ceil_mode_ == false)
+    round_mode_ = PoolingParameter_RoundMode_FLOOR;
+
   if (global_pooling_) {
     kernel_h_ = bottom[0]->height();
     kernel_w_ = bottom[0]->width();
@@ -88,6 +93,7 @@ void PoolingLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom,
     kernel_h_ = bottom[0]->height();
     kernel_w_ = bottom[0]->width();
   }
+
   switch (round_mode_) {
   case PoolingParameter_RoundMode_CEIL:
     pooled_height_ = static_cast<int>(ceil(static_cast<float>(
@@ -104,6 +110,7 @@ void PoolingLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom,
   default:
     LOG(FATAL) << "Unknown rounding mode.";
   }
+
   if (pad_h_ || pad_w_) {
     // If we have padding, ensure that the last pooling starts strictly
     // inside the image (instead of at the padding); otherwise clip the last.
@@ -211,7 +218,8 @@ void PoolingLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
             int wstart = pw * stride_w_ - pad_w_;
             int hend = min(hstart + kernel_h_, height_ + pad_h_);
             int wend = min(wstart + kernel_w_, width_ + pad_w_);
-            int pool_size = (hend - hstart) * (wend - wstart);
+            //int pool_size = (hend - hstart) * (wend - wstart);
+            int pool_size = kernel_h_ * kernel_w_;
             hstart = max(hstart, 0);
             wstart = max(wstart, 0);
             hend = min(hend, height_);
