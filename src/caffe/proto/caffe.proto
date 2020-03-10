@@ -644,6 +644,8 @@ message LayerParameter {
   optional EvalDetectionParameter eval_detection_param = 301;
   // Shuffle channel layer
   optional ShuffleChannelParameter shuffle_channel_param = 164;
+  // retinaface detection layer
+  optional RetinaFaceDetectionParameter retinaface_detection_param = 302;
 }
 
 message RegionLossParameter{
@@ -2304,4 +2306,11 @@ message PReLUParameter {
 // ShuffleNet
 message ShuffleChannelParameter {
   optional uint32 group = 1[default = 1]; // The number of group
+}
+
+// RetinaFaceDetection
+message RetinaFaceDetectionParameter {
+  optional float nms_threshold = 1;
+  optional float confidence_threshold = 2;
+  optional uint32 keep_topk = 3;
 }
