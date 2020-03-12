@@ -92,8 +92,8 @@ void RetinaFaceDetectionLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bo
                 info.y2 = bbox[3];
                 info.score = confidence;
                 for(int idx = 0; idx < 5; ++idx) {
-                    info.x[i] = landmark[i];
-                    info.y[i] = landmark[i+5];
+                    info.x[idx] = landmark[idx];
+                    info.y[idx] = landmark[idx+5];
                 }
 
                 infos.push_back(info);
@@ -114,9 +114,6 @@ void RetinaFaceDetectionLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bo
             top_data[count++] = preds[i].x[j];
             top_data[count++] = preds[i].y[j];
         }
-
-        std::cout << "x1= " << preds[i].x1 << ",y1= " << preds[i].y1
-            << ",x2= " << preds[i].x2 << ",y2= " << preds[i].y2 << std::endl;
     }
 }
 
