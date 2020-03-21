@@ -29,6 +29,7 @@ void RetinaFaceDetectionLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bo
     std::vector<FaceInfo> infos;
     size_t bottom_size = bottom.size();
     assert(bottom_size == 9);
+
    // auto face_rpn_cls_prob_reshape_stride8 = bottom[0]->cpu_data();
    // auto face_rpn_bbox_pred_stride8 = bottom[1]->cpu_data();
    // auto face_rpn_landmark_pred_stirde8 = bottom[2]->cpu_data();
@@ -102,6 +103,9 @@ void RetinaFaceDetectionLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bo
     }
 
     auto preds = nms(infos, nms_threshold_);
+    if (keep_topk_ > preds.size()) {
+        keep_topk_ = preds.size();
+    }
 
     long long count = 0;
     for(int i = 0; i < keep_topk_; ++i) {
