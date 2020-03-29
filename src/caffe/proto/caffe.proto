@@ -646,6 +646,8 @@ message LayerParameter {
   optional ShuffleChannelParameter shuffle_channel_param = 164;
   // retinaface detection layer
   optional RetinaFaceDetectionParameter retinaface_detection_param = 302;
+  // Yolo detection layer
+  optional YoloDetectionParameter yolo_detection_param = 303;
 }
 
 message RegionLossParameter{
@@ -2313,4 +2315,13 @@ message RetinaFaceDetectionParameter {
   optional float nms_threshold = 1;
   optional float confidence_threshold = 2;
   optional uint32 keep_topk = 3;
+}
+
+// YoloDetection
+message YoloDetectionParameter {
+  optional uint32 net_input_h = 1;
+  optional uint32 net_input_w  = 2;
+  optional float nms_threshold = 3;
+  optional float obj_threshold = 4;
+  optional uint32 keep_topk = 5;
 }
