@@ -3,6 +3,8 @@ if(NOT HAVE_PYTHON)
   return()
 endif()
 
+set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
+set(CMAKE_INSTALL_RPATH "\${ORIGIN}/../lib;\${ORIGIN}/;\${ORIGIN}/../../../")
 file(GLOB_RECURSE python_srcs ${PROJECT_SOURCE_DIR}/python/*.cpp)
 
 add_library(pycaffe SHARED ${python_srcs})
