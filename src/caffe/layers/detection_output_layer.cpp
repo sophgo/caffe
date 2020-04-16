@@ -75,6 +75,7 @@ void DetectionOutputLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
   if (detection_output_param.nms_param().has_top_k()) {
     top_k_ = detection_output_param.nms_param().top_k();
   }
+#if 0 // disable save_output_param
   const SaveOutputParameter& save_output_param =
       detection_output_param.save_output_param();
   output_directory_ = save_output_param.output_directory();
@@ -151,6 +152,7 @@ void DetectionOutputLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
   if (has_resize_) {
     resize_param_ = save_output_param.resize_param();
   }
+#endif
   name_count_ = 0;
   visualize_ = detection_output_param.visualize();
   if (visualize_) {
