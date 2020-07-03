@@ -648,6 +648,8 @@ message LayerParameter {
   optional RetinaFaceDetectionParameter retinaface_detection_param = 302;
   // Yolo detection layer
   optional YoloDetectionParameter yolo_detection_param = 303;
+  // Region Proposal
+  optional ProposalParameter proposal_param = 304;
 }
 
 message RegionLossParameter{
@@ -1728,6 +1730,13 @@ message PowerParameter {
   optional float power = 1 [default = 1.0];
   optional float scale = 2 [default = 1.0];
   optional float shift = 3 [default = 0.0];
+}
+
+message ProposalParameter {
+  optional int32 feat_stride = 1 [default = 16];
+  optional int32 anchor_base_size = 2 [default = 16];
+  optional float rpn_nms_threshold = 3 [default = 0.7];
+  optional int32 rpn_nms_post_top_n = 4 [default = 300];
 }
 
 // Message that store parameters used by PriorBoxLayer
