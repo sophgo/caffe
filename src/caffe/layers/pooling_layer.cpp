@@ -79,6 +79,8 @@ void PoolingLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
     CHECK_LT(pad_h_, kernel_h_);
     CHECK_LT(pad_w_, kernel_w_);
   }
+
+  yolo_ = this->layer_param_.pooling_param().yolo();
 }
 
 template <typename Dtype>
@@ -109,6 +111,12 @@ void PoolingLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom,
     break;
   default:
     LOG(FATAL) << "Unknown rounding mode.";
+  }
+
+  // for yolo max pooling padding=SAME
+  if (yolo_) {
+    pooled_height_ += 1;
+    pooled_width_ += 1;
   }
 
   if (pad_h_ || pad_w_) {

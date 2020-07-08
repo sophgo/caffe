@@ -49,6 +49,7 @@ private:
   int net_input_h_;
   int net_input_w_;
   int keep_topk_;
+  bool tiny_;
 };
 
 }  // namespace caffe

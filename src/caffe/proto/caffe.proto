@@ -1723,6 +1723,7 @@ message PoolingParameter {
     FLOOR = 1;
   }
   optional RoundMode round_mode = 19 [default = CEIL];
+  optional bool yolo = 99 [default = false]; // Yolo case
 }
 
 message PowerParameter {
@@ -2333,4 +2334,5 @@ message YoloDetectionParameter {
   optional float nms_threshold = 3;
   optional float obj_threshold = 4;
   optional uint32 keep_topk = 5;
+  optional bool tiny = 6 [default=false];
 }
