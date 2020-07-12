@@ -2364,5 +2364,6 @@ message YoloDetectionParameter {
   optional float nms_threshold = 3;
   optional float obj_threshold = 4;
   optional uint32 keep_topk = 5;
-  optional bool tiny = 6 [default=false];
+  optional bool spp_net = 6 [default=false];
+  optional bool tiny = 7 [default=false];
 }
