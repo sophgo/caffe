@@ -21,7 +21,7 @@ class UpsampleLayer : public Layer<Dtype> {
 
   virtual inline const char* type() const { return "Upsample"; }
   virtual inline int MinBottomBlobs() const { return 1; }
-  virtual inline int MaxBottomBlobs() const { return 1; }
+  virtual inline int MaxBottomBlobs() const { return 2; }
   virtual inline int ExactNumTopBlobs() const { return 1; }
 
   virtual void Forward_cpu(const vector<Blob<Dtype>*>& bottom,
@@ -35,6 +35,9 @@ class UpsampleLayer : public Layer<Dtype> {
 
  private:
   int scale_;
+  int scale_h_, scale_w_;
+  bool pad_out_h_, pad_out_w_;
+  int upsample_h_, upsample_w_;
 };
 
 

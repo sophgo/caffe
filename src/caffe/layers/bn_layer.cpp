@@ -17,7 +17,11 @@ void BNLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
   if (this->blobs_.size() > 0) {
     LOG(INFO) << "Skipping parameter initialization";
   } else {
-    this->blobs_.resize(4);
+    if (this->layer_param_.bn_param().bn_mode() == BNParameter_BNMode_INFERENCE)
+      this->blobs_.resize(2);
+    else
+      this->blobs_.resize(4);
+
     vector<int> shape;
     shape.push_back(1);
     shape.push_back(bottom[0]->channels());
@@ -33,14 +37,18 @@ void BNLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
     shared_ptr<Filler<Dtype> > bias_filler(GetFiller<Dtype>(
         this->layer_param_.bn_param().bias_filler()));
     bias_filler->Fill(this->blobs_[1].get());
-    // moving average mean
-    this->blobs_[2].reset(new Blob<Dtype>(shape));
-    caffe_set(this->blobs_[2]->count(), Dtype(0),
-        this->blobs_[2]->mutable_cpu_data());
-    // moving average variance
-    this->blobs_[3].reset(new Blob<Dtype>(shape));
-    caffe_set(this->blobs_[3]->count(), frozen_ ? Dtype(1) : Dtype(0),
-        this->blobs_[3]->mutable_cpu_data());
+
+
+    if (this->layer_param_.bn_param().bn_mode() != BNParameter_BNMode_INFERENCE) {
+      // moving average mean
+      this->blobs_[2].reset(new Blob<Dtype>(shape));
+      caffe_set(this->blobs_[2]->count(), Dtype(0),
+          this->blobs_[2]->mutable_cpu_data());
+      // moving average variance
+      this->blobs_[3].reset(new Blob<Dtype>(shape));
+      caffe_set(this->blobs_[3]->count(), frozen_ ? Dtype(1) : Dtype(0),
+          this->blobs_[3]->mutable_cpu_data());
+    }
   }
   this->param_propagate_down_.resize(this->blobs_.size(), true);
 
@@ -100,6 +108,34 @@ void BNLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
 
   const Dtype* scale_data = this->blobs_[0]->cpu_data();
   const Dtype* shift_data = this->blobs_[1]->cpu_data();
+
+
+  if (this->layer_param_.bn_param().bn_mode() == BNParameter_BNMode_INFERENCE) {
+      // scale
+      caffe_cpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, num_, channels_, 1, Dtype(1),
+          batch_sum_multiplier_.cpu_data(), scale_data, Dtype(0),
+          spatial_statistic_.mutable_cpu_data());
+      caffe_cpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, num_ * channels_,
+          height_ * width_, 1, Dtype(1),
+          spatial_statistic_.cpu_data(),
+          spatial_sum_multiplier_.cpu_data(), Dtype(0),
+          broadcast_buffer_.mutable_cpu_data());
+      caffe_mul(broadcast_buffer_.count(), const_bottom_data,
+          broadcast_buffer_.cpu_data(), top_data);
+
+      // shift
+      caffe_cpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, num_, channels_, 1, Dtype(1),
+          batch_sum_multiplier_.cpu_data(), shift_data, Dtype(0),
+          spatial_statistic_.mutable_cpu_data());
+      caffe_cpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans,
+          num_ * channels_, height_ * width_, 1, Dtype(1),
+          spatial_statistic_.cpu_data(),
+          spatial_sum_multiplier_.cpu_data(), Dtype(0),
+          broadcast_buffer_.mutable_cpu_data());
+      caffe_add(broadcast_buffer_.count(), const_top_data,
+          broadcast_buffer_.cpu_data(), top_data);
+      return;
+  }
 
   // Mean normalization
   if (frozen_ || this->phase_ == TEST) {
@@ -184,6 +220,7 @@ void BNLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
     caffe_copy(batch_statistic_.count(), batch_statistic_.cpu_data(),
         x_inv_std_.mutable_cpu_data());
   }
+
 
   // Scale
   caffe_cpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, num_, channels_, 1,

@@ -1109,6 +1109,11 @@ message BiasParameter {
 }
 
 message BNParameter {
+  enum BNMode {
+    LEARN = 0;
+    INFERENCE = 1;
+  }
+  optional BNMode bn_mode = 7 [default = LEARN];
   optional FillerParameter slope_filler = 1;
   optional FillerParameter bias_filler = 2;
   optional float momentum = 3 [default = 0.9];
@@ -1145,6 +1150,16 @@ message ReorgParameter {
 // ChenYingpeng version, should be same as Reorg
 message UpsampleParameter{
   optional int32 scale = 1 [default = 1];
+  optional uint32 scale_h = 2;
+  optional uint32 scale_w = 3;
+  // DEPRECATED. Specify exact output height using upsample_h. This
+  // parameter only works when scale is 2
+  optional bool pad_out_h = 4 [default = false];
+  // DEPRECATED. Specify exact output width using upsample_w. This
+  // parameter only works when scale is 2
+  optional bool pad_out_w = 5 [default = false];
+  optional uint32 upsample_h = 6;
+  optional uint32 upsample_w = 7;
 }
 
 message ConvolutionParameter {
