@@ -22,7 +22,18 @@ void ProposalLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
   anchor_base_size_ = param.anchor_base_size();
   rpn_nms_post_top_n_ = param.rpn_nms_post_top_n();
   rpn_nms_threshold_ = param.rpn_nms_threshold();
+  input_h_ = param.net_input_h();
+  input_w_ = param.net_input_w();
   Generate_anchors();
+}
+
+template <typename Dtype>
+void ProposalLayer<Dtype>::Reshape(const vector<Blob<Dtype>*> &bottom, const vector<Blob<Dtype>*> &top)
+{
+  vector<int> proposal_shape;
+  proposal_shape.push_back(rpn_nms_post_top_n_);
+  proposal_shape.push_back(5);
+  top[0]->Reshape(proposal_shape);
 }
 
 template <typename Dtype>      
@@ -30,7 +41,6 @@ void ProposalLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top) {
   const Dtype* score = bottom[0]->cpu_data();
   const Dtype* bbox_deltas = bottom[1]->cpu_data();
-  const Dtype* im_info = bottom[2]->cpu_data();
   int height = bottom[0]->height();
   int width = bottom[0]->width();
   float thresh = 0.3;
@@ -71,16 +81,16 @@ void ProposalLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
     }
   }
   vector<vector<float> > pred_boxes;
-  bbox_transform_inv(im_info[1], im_info[0], bbox, select_anchor, pred_boxes);
+  bbox_transform_inv(input_w_, input_h_, bbox, select_anchor, pred_boxes);
   
   apply_nms(pred_boxes, confidence);
 
   int num = pred_boxes.size() > rpn_nms_post_top_n_ ? rpn_nms_post_top_n_ : pred_boxes.size();
 
-  vector<int> proposal_shape;
-  proposal_shape.push_back(num);
-  proposal_shape.push_back(5);
-  top[0]->Reshape(proposal_shape);
+  //vector<int> proposal_shape;
+  //proposal_shape.push_back(num);
+  //proposal_shape.push_back(5);
+  //top[0]->Reshape(proposal_shape);
   Dtype* top_data = top[0]->mutable_cpu_data();
   for (int i = 0; i < num; i++)
   {

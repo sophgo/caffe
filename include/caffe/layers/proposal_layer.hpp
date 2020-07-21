@@ -24,7 +24,7 @@ class ProposalLayer : public Layer<Dtype> {
   virtual void LayerSetUp(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top);
   virtual void Reshape(const vector<Blob<Dtype>*>& bottom,
-	  const vector<Blob<Dtype>*>& top) {}
+	  const vector<Blob<Dtype>*>& top);
 
   virtual inline const char* type() const { return "Proposal"; }
 
@@ -67,7 +67,8 @@ class ProposalLayer : public Layer<Dtype> {
   int rpn_nms_post_top_n_;
   float rpn_nms_threshold_;
   vector<float> anchor_boxes_;
-  
+  int input_w_;
+  int input_h_;
 };
 
 }  // namespace caffe

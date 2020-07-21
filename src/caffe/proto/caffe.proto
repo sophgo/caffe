@@ -653,6 +653,8 @@ message LayerParameter {
   optional YoloDetectionParameter yolo_detection_param = 303;
   // Region Proposal
   optional ProposalParameter proposal_param = 304;
+  // Faster-rcnn output layer
+  optional FrcnDetectionParameter frcn_detection_param = 305;
 }
 
 message RegionLossParameter{
@@ -1768,6 +1770,8 @@ message ProposalParameter {
   optional int32 anchor_base_size = 2 [default = 16];
   optional float rpn_nms_threshold = 3 [default = 0.7];
   optional int32 rpn_nms_post_top_n = 4 [default = 300];
+  required uint32 net_input_h = 5;
+  required uint32 net_input_w = 6; 
 }
 
 // Message that store parameters used by PriorBoxLayer
@@ -2366,4 +2370,11 @@ message YoloDetectionParameter {
   optional uint32 keep_topk = 5;
   optional bool spp_net = 6 [default=false];
   optional bool tiny = 7 [default=false];
+}
+
+message FrcnDetectionParameter {
+  optional float nms_threshold = 1;
+  optional float obj_threshold = 2;
+  optional uint32 keep_topk = 3;
+  optional uint32 class_num = 4;
 }
