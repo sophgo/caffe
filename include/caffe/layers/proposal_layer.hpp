@@ -65,6 +65,7 @@ class ProposalLayer : public Layer<Dtype> {
   vector<float> anchor_ratio_; //anchor_ratio
 
   int rpn_nms_post_top_n_;
+  float rpn_obj_threshold_;
   float rpn_nms_threshold_;
   vector<float> anchor_boxes_;
   int input_w_;

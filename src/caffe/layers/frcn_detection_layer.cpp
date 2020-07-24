@@ -50,10 +50,10 @@ static void nms(detection *dets, int num, float nms_threshold)
 
       float s2 = (dets[j].bbox.x2 - dets[j].bbox.x1 + 1) * (dets[j].bbox.y2 - dets[j].bbox.y1 + 1);
 
-      float x1 = std::max(dets[i].bbox.x1, dets[i].bbox.x1);
-      float y1 = std::max(dets[i].bbox.y1, dets[i].bbox.y1);
-      float x2 = std::min(dets[i].bbox.x2, dets[i].bbox.x2);
-      float y2 = std::min(dets[i].bbox.y2, dets[i].bbox.y2);
+      float x1 = std::max(dets[i].bbox.x1, dets[j].bbox.x1);
+      float y1 = std::max(dets[i].bbox.y1, dets[j].bbox.y1);
+      float x2 = std::min(dets[i].bbox.x2, dets[j].bbox.x2);
+      float y2 = std::min(dets[i].bbox.y2, dets[j].bbox.y2);
 
       float width = x2 - x1;
       float height = y2 - y1;
@@ -80,14 +80,11 @@ void FrcnDetectionLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*> &bottom, c
   obj_threshold_ = this->layer_param_.frcn_detection_param().obj_threshold();
   keep_topk_ = this->layer_param_.frcn_detection_param().keep_topk();
   class_num_ = this->layer_param_.frcn_detection_param().class_num();
-  //std::cout << "nms_threshold: " << nms_threshold_ << ", obj_threshold: " << obj_threshold_
-  //          << ", keep_topk_: " << keep_topk_ << ", class_num: " << class_num_ << "\n";
 }
 
 template <typename Dtype>
 void FrcnDetectionLayer<Dtype>::Reshape(const vector<Blob<Dtype>*> &bottom, const vector<Blob<Dtype>*> &top)
 {
-  // [x1, y1, x2, y2, cls, confidence]
   top[0]->Reshape(1, 1, keep_topk_, 6);
 }
 
@@ -96,24 +93,17 @@ void FrcnDetectionLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
                                              const vector<Blob<Dtype>*>& top)
 {
   auto top_data = top[0]->mutable_cpu_data();
-  // [num, 84]
   const Dtype* bbox_deltas = bottom[0]->cpu_data();
-  // [num, 21]
   const Dtype* scores = bottom[1]->cpu_data();
-  // [num, 5]
   const Dtype* rois = bottom[2]->cpu_data();
 
   int num = bottom[0]->shape(0);
-  
-  //printf("frcn output forward num: %d\n", num);
 
   std::vector<float> boxes(num * 4, 0);
   for (int i = 0; i < num; ++i) {
     for (int j = 0; j < 4; ++j) {
       boxes[i*4 + j] = rois[i*5 + j + 1];
-      //printf("%f,", boxes[i*4+j]);
     }
-    //printf("\n");
   }
 
   std::vector<float> pred(num * class_num_ * 4, 0);
@@ -167,7 +157,6 @@ void FrcnDetectionLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
                                               const vector<bool>& propagate_down,
                                               const vector<Blob<Dtype>*>& bottom)
 {
-
 }
 
 #ifdef CPU_ONLY

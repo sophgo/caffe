@@ -1768,10 +1768,11 @@ message PowerParameter {
 message ProposalParameter {
   optional int32 feat_stride = 1 [default = 16];
   optional int32 anchor_base_size = 2 [default = 16];
-  optional float rpn_nms_threshold = 3 [default = 0.7];
-  optional int32 rpn_nms_post_top_n = 4 [default = 300];
-  required uint32 net_input_h = 5;
-  required uint32 net_input_w = 6; 
+  optional float rpn_obj_threshold = 3 [default = 0.3];
+  optional float rpn_nms_threshold = 4 [default = 0.7];
+  optional int32 rpn_nms_post_top_n = 5 [default = 300];
+  required uint32 net_input_h = 6;
+  required uint32 net_input_w = 7;
 }
 
 // Message that store parameters used by PriorBoxLayer

@@ -22,6 +22,7 @@ void ProposalLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
   anchor_base_size_ = param.anchor_base_size();
   rpn_nms_post_top_n_ = param.rpn_nms_post_top_n();
   rpn_nms_threshold_ = param.rpn_nms_threshold();
+  rpn_obj_threshold_ = param.rpn_obj_threshold();
   input_h_ = param.net_input_h();
   input_w_ = param.net_input_w();
   Generate_anchors();
@@ -43,7 +44,7 @@ void ProposalLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
   const Dtype* bbox_deltas = bottom[1]->cpu_data();
   int height = bottom[0]->height();
   int width = bottom[0]->width();
-  float thresh = 0.3;
+  float thresh = rpn_obj_threshold_;
   vector<vector<float> > select_anchor;
   vector<float> confidence;
   vector<vector<float> > bbox;
@@ -87,10 +88,6 @@ void ProposalLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
 
   int num = pred_boxes.size() > rpn_nms_post_top_n_ ? rpn_nms_post_top_n_ : pred_boxes.size();
 
-  //vector<int> proposal_shape;
-  //proposal_shape.push_back(num);
-  //proposal_shape.push_back(5);
-  //top[0]->Reshape(proposal_shape);
   Dtype* top_data = top[0]->mutable_cpu_data();
   for (int i = 0; i < num; i++)
   {
