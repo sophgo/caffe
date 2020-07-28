@@ -655,6 +655,8 @@ message LayerParameter {
   optional ProposalParameter proposal_param = 304;
   // Faster-rcnn output layer
   optional FrcnDetectionParameter frcn_detection_param = 305;
+  // for yolov4
+  optional MishParameter mish_param = 306;
 }
 
 message RegionLossParameter{
@@ -2378,4 +2380,13 @@ message FrcnDetectionParameter {
   optional float obj_threshold = 2;
   optional uint32 keep_topk = 3;
   optional uint32 class_num = 4;
+}
+
+message MishParameter {
+  enum Engine {
+    DEFAULT = 0;
+    CAFFE = 1;
+    CUDNN = 2;
+  }
+  optional Engine engine = 2 [default = DEFAULT];
 }
