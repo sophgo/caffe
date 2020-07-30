@@ -126,7 +126,7 @@ class DetectionOutputLayer : public Layer<Dtype> {
   int top_k_;
   float eta_;
 
-  bool need_save_;
+  bool need_save_ = false;
   string output_directory_;
   string output_name_prefix_;
   string output_format_;
