@@ -49,12 +49,14 @@ void UpsampleLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top) {
   CHECK_EQ(4, bottom[0]->num_axes()) << "Input must have 4 axes, "
       << "corresponding to (num, channels, height, width)";
-  CHECK_EQ(4, bottom[1]->num_axes()) << "Input mask must have 4 axes, "
-      << "corresponding to (num, channels, height, width)";
-  CHECK_EQ(bottom[0]->num(), bottom[1]->num());
-  CHECK_EQ(bottom[0]->channels(), bottom[1]->channels());
-  CHECK_EQ(bottom[0]->height(), bottom[1]->height());
-  CHECK_EQ(bottom[0]->width(), bottom[1]->width());
+  if (bottom.size() == 2) {
+    CHECK_EQ(4, bottom[1]->num_axes()) << "Input mask must have 4 axes, "
+        << "corresponding to (num, channels, height, width)";
+    CHECK_EQ(bottom[0]->num(), bottom[1]->num());
+    CHECK_EQ(bottom[0]->channels(), bottom[1]->channels());
+    CHECK_EQ(bottom[0]->height(), bottom[1]->height());
+    CHECK_EQ(bottom[0]->width(), bottom[1]->width());
+  }
 
   if (upsample_h_ <= 0 || upsample_w_ <= 0) {
     upsample_h_ = bottom[0]->height() * scale_h_ - int(pad_out_h_);
@@ -67,8 +69,8 @@ void UpsampleLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom,
 template <typename Dtype>
 void UpsampleLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
     const vector<Blob<Dtype>*>& top) {
-  const bool NearstMode = bottom.size() == 1;
-  if (NearstMode) {
+  const bool NearestMode = bottom.size() == 1;
+  if (NearestMode) {
     int N = top[0]->shape(0);
     int C = top[0]->shape(1);
     int H = top[0]->shape(2);
@@ -126,9 +128,9 @@ void UpsampleLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
 template <typename Dtype>
 void UpsampleLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
     const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom) {
-  const bool NearstMode = bottom.size() == 1;
+  const bool NearestMode = bottom.size() == 1;
 
-  if (NearstMode) {
+  if (NearestMode) {
     int N = bottom[0]->shape(0);
     int C = bottom[0]->shape(1);
     int H = bottom[0]->shape(2);
