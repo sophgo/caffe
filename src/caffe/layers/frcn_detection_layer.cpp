@@ -85,7 +85,8 @@ void FrcnDetectionLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*> &bottom, c
 template <typename Dtype>
 void FrcnDetectionLayer<Dtype>::Reshape(const vector<Blob<Dtype>*> &bottom, const vector<Blob<Dtype>*> &top)
 {
-  top[0]->Reshape(1, 1, keep_topk_, 6);
+  int batch = bottom[2]->num();
+  top[0]->Reshape(batch, 1, keep_topk_, 6);
 }
 
 template <typename Dtype>
@@ -97,58 +98,67 @@ void FrcnDetectionLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
   const Dtype* scores = bottom[1]->cpu_data();
   const Dtype* rois = bottom[2]->cpu_data();
 
-  int num = bottom[0]->shape(0);
+  int batch = bottom[2]->num();
 
-  std::vector<float> boxes(num * 4, 0);
-  for (int i = 0; i < num; ++i) {
-    for (int j = 0; j < 4; ++j) {
-      boxes[i*4 + j] = rois[i*5 + j + 1];
-    }
-  }
+  for (int b = 0; b < batch; ++b) {
+    int num = bottom[2]->height();
 
-  std::vector<float> pred(num * class_num_ * 4, 0);
-  float *pred_data = pred.data();
-  std::vector<float> deltas(bbox_deltas, bbox_deltas+bottom[0]->count());
-  bbox_transform_inv(boxes.data(), deltas.data(), pred_data, num, class_num_);
+    auto batched_bbox_deltas = bbox_deltas + b * num * class_num_ * 4;
+    auto batched_scores = scores + b * num * class_num_;
+    auto batched_rois = rois + bottom[2]->offset(b);
 
-  int det_num = 0;
-  detection dets[num];
-
-  for (int i = 0; i < num; ++i) {
-    for (int j = 1; j < class_num_; ++j) {
-      if (scores[i*class_num_ + j] > obj_threshold_) {
-        dets[det_num].bbox.x1 = pred[i*class_num_*4 + j*4 + 0];
-        dets[det_num].bbox.y1 = pred[i*class_num_*4 + j*4 + 1];
-        dets[det_num].bbox.x2 = pred[i*class_num_*4 + j*4 + 2];
-        dets[det_num].bbox.y2 = pred[i*class_num_*4 + j*4 + 3];
-        dets[det_num].cls = j;
-        dets[det_num].score = scores[i*class_num_ + j];
-        det_num++;
+    std::vector<float> boxes(num * 4, 0);
+    for (int i = 0; i < num; ++i) {
+      for (int j = 0; j < 4; ++j) {
+        boxes[i*4 + j] = batched_rois[i*5 + j + 1];
       }
     }
-  }
 
-  nms(dets, det_num, nms_threshold_);
-  detection dets_nms[det_num];
-  int det_idx = 0;
-  for (int i = 0; i < det_num; i++) {
-    if (dets[i].score > 0) {
-      dets_nms[det_idx] = dets[i];
-      det_idx ++;
+    std::vector<float> pred(num * class_num_ * 4, 0);
+    float *pred_data = pred.data();
+    std::vector<float> deltas(batched_bbox_deltas, batched_bbox_deltas + num * class_num_ * 4);
+    bbox_transform_inv(boxes.data(), deltas.data(), pred_data, num, class_num_);
+
+    int det_num = 0;
+    detection dets[num];
+
+    for (int i = 0; i < num; ++i) {
+      for (int j = 1; j < class_num_; ++j) {
+        if (batched_scores[i*class_num_ + j] > obj_threshold_) {
+          dets[det_num].bbox.x1 = pred[i*class_num_*4 + j*4 + 0];
+          dets[det_num].bbox.y1 = pred[i*class_num_*4 + j*4 + 1];
+          dets[det_num].bbox.x2 = pred[i*class_num_*4 + j*4 + 2];
+          dets[det_num].bbox.y2 = pred[i*class_num_*4 + j*4 + 3];
+          dets[det_num].cls = j;
+          dets[det_num].score = batched_scores[i*class_num_ + j];
+          det_num++;
+        }
+      }
     }
-  }
 
-  if (keep_topk_ > det_idx)
-      keep_topk_ = det_idx;
+    nms(dets, det_num, nms_threshold_);
+    detection dets_nms[det_num];
+    int det_idx = 0;
+    for (int i = 0; i < det_num; i++) {
+      if (dets[i].score > 0) {
+        dets_nms[det_idx] = dets[i];
+        det_idx ++;
+      }
+    }
 
-  long long count = 0;
-  for(int i = 0; i < keep_topk_; ++i) {
-    top_data[count++] = dets_nms[i].bbox.x1;
-    top_data[count++] = dets_nms[i].bbox.y1;
-    top_data[count++] = dets_nms[i].bbox.x2;
-    top_data[count++] = dets_nms[i].bbox.y2;
-    top_data[count++] = dets_nms[i].cls;
-    top_data[count++] = dets_nms[i].score;
+    if (keep_topk_ > det_idx)
+        keep_topk_ = det_idx;
+
+    long long count = 0;
+    auto batched_top_data = top_data + top[0]->offset(b);
+    for(int i = 0; i < keep_topk_; ++i) {
+      batched_top_data[count++] = dets_nms[i].bbox.x1;
+      batched_top_data[count++] = dets_nms[i].bbox.y1;
+      batched_top_data[count++] = dets_nms[i].bbox.x2;
+      batched_top_data[count++] = dets_nms[i].bbox.y2;
+      batched_top_data[count++] = dets_nms[i].cls;
+      batched_top_data[count++] = dets_nms[i].score;
+    }
   }
 }
 

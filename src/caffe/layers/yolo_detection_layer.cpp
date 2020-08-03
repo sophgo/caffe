@@ -208,7 +208,8 @@ void YoloDetectionLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype> *> &bottom, 
 template <typename Dtype>
 void YoloDetectionLayer<Dtype>::Reshape(const vector<Blob<Dtype> *> &bottom, const vector<Blob<Dtype> *> &top)
 {
-    top[0]->Reshape(1, 1, keep_topk_, 6);
+    int batch = bottom[0]->num();
+    top[0]->Reshape(batch, 1, keep_topk_, 6);
 }
 
 template <typename Dtype>
@@ -216,9 +217,7 @@ void YoloDetectionLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
                                              const vector<Blob<Dtype>*>& top)
 {
   auto top_data = top[0]->mutable_cpu_data();
-
-  std::vector<std::vector<int>> grid_size;
-  std::vector<std::vector<float>> features;
+  auto batch = top[0]->num();
 
   const float anchors[3][6] = {
       {10,13,   16,30,    33,23},      // layer106-conv (52*52)
@@ -231,54 +230,60 @@ void YoloDetectionLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
       {81,82,  135,169,  344,319} // layer16-conv (13*13)
   };
 
-  for (int i = 0; i < bottom.size(); ++i) {
-    std::vector<int> grid_hw{bottom[i]->shape()[2], bottom[i]->shape()[3]};
-    grid_size.push_back(grid_hw);
-    auto data = bottom[i]->cpu_data();
-    auto count = bottom[i]->count();
-    std::vector<float> bottom_data(data, data + count);
-    features.push_back(bottom_data);
-  }
+  for (int b = 0; b < batch; ++b) {
+    std::vector<std::vector<int>> grid_size;
+    std::vector<std::vector<float>> features;
 
-  detection det_raw[MAX_DET_RAW];
-  detection dets[MAX_DET];
-  int det_raw_idx = 0;
-  for (int i = 0; i < features.size(); i++) {
-    if (!tiny_) {
-      process_feature(det_raw, &det_raw_idx, features[i].data(), grid_size[i],
-        &anchors[i][0], {net_input_h_, net_input_w_},  80, obj_threshold_);
-    } else {
-      process_feature(det_raw, &det_raw_idx, features[i].data(), grid_size[i],
-        &tiny_anchors[i][0], {net_input_h_, net_input_w_},  80, obj_threshold_);
+    for (int i = 0; i < bottom.size(); ++i) {
+      std::vector<int> grid_hw{bottom[i]->shape()[2], bottom[i]->shape()[3]};
+      grid_size.push_back(grid_hw);
+      auto data = bottom[i]->cpu_data() + bottom[i]->offset(b);
+      auto count = bottom[i]->count(1);
+      std::vector<float> bottom_data(data, data + count);
+      features.push_back(bottom_data);
     }
-  }
-  nms(det_raw, det_raw_idx, nms_threshold_);
-  int det_idx = 0;
-  for (int i = 0; i < det_raw_idx; i++) {
-    if (det_raw[i].score > 0) {
-      //DBG("keep cls %d, score %f, coord = [%f, %f, %f, %f], name %s\n",
-      //    det_raw[i].cls, det_raw[i].score,
-      //    det_raw[i].bbox.x, det_raw[i].bbox.y,
-      //    det_raw[i].bbox.w, det_raw[i].bbox.h,
-      //    coco_names[det_raw[i].cls]);
-      dets[det_idx] = det_raw[i];
-      det_idx ++;
-    } else {
-      //std::cout << "erased: " << det_raw[i].cls << std::endl;
+
+    detection det_raw[MAX_DET_RAW];
+    detection dets[MAX_DET];
+    int det_raw_idx = 0;
+    for (int i = 0; i < features.size(); i++) {
+      if (!tiny_) {
+        process_feature(det_raw, &det_raw_idx, features[i].data(), grid_size[i],
+          &anchors[i][0], {net_input_h_, net_input_w_},  80, obj_threshold_);
+      } else {
+        process_feature(det_raw, &det_raw_idx, features[i].data(), grid_size[i],
+          &tiny_anchors[i][0], {net_input_h_, net_input_w_},  80, obj_threshold_);
+      }
     }
-  }
+    nms(det_raw, det_raw_idx, nms_threshold_);
+    int det_idx = 0;
+    for (int i = 0; i < det_raw_idx; i++) {
+      if (det_raw[i].score > 0) {
+        //DBG("keep cls %d, score %f, coord = [%f, %f, %f, %f], name %s\n",
+        //    det_raw[i].cls, det_raw[i].score,
+        //    det_raw[i].bbox.x, det_raw[i].bbox.y,
+        //    det_raw[i].bbox.w, det_raw[i].bbox.h,
+        //    coco_names[det_raw[i].cls]);
+        dets[det_idx] = det_raw[i];
+        det_idx ++;
+      } else {
+        //std::cout << "erased: " << det_raw[i].cls << std::endl;
+      }
+    }
 
-  if (keep_topk_ > det_idx)
-      keep_topk_ = det_idx;
+    if (keep_topk_ > det_idx)
+        keep_topk_ = det_idx;
 
-  long long count = 0;
-  for(int i = 0; i < keep_topk_; ++i) {
-    top_data[count++] = dets[i].bbox.x;
-    top_data[count++] = dets[i].bbox.y;
-    top_data[count++] = dets[i].bbox.w;
-    top_data[count++] = dets[i].bbox.h;
-    top_data[count++] = dets[i].cls;
-    top_data[count++] = dets[i].score;
+    long long count = 0;
+    auto batch_top_data = top_data + top[0]->offset(b);
+    for(int i = 0; i < keep_topk_; ++i) {
+      batch_top_data[count++] = dets[i].bbox.x;
+      batch_top_data[count++] = dets[i].bbox.y;
+      batch_top_data[count++] = dets[i].bbox.w;
+      batch_top_data[count++] = dets[i].bbox.h;
+      batch_top_data[count++] = dets[i].cls;
+      batch_top_data[count++] = dets[i].score;
+    }
   }
 }
 

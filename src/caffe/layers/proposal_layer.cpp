@@ -8,7 +8,7 @@ template <typename Dtype>
 void ProposalLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top) {
   const ProposalParameter& param = this->layer_param_.proposal_param();
-  
+
   feat_stride_ = param.feat_stride();
 
   anchor_scale_.push_back(8.0);
@@ -31,7 +31,10 @@ void ProposalLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
 template <typename Dtype>
 void ProposalLayer<Dtype>::Reshape(const vector<Blob<Dtype>*> &bottom, const vector<Blob<Dtype>*> &top)
 {
+  int batch = bottom[0]->num();
   vector<int> proposal_shape;
+  proposal_shape.push_back(batch);
+  proposal_shape.push_back(1);
   proposal_shape.push_back(rpn_nms_post_top_n_);
   proposal_shape.push_back(5);
   top[0]->Reshape(proposal_shape);
@@ -42,60 +45,63 @@ void ProposalLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top) {
   const Dtype* score = bottom[0]->cpu_data();
   const Dtype* bbox_deltas = bottom[1]->cpu_data();
+  int batch = bottom[0]->num();
   int height = bottom[0]->height();
   int width = bottom[0]->width();
   float thresh = rpn_obj_threshold_;
-  vector<vector<float> > select_anchor;
-  vector<float> confidence;
-  vector<vector<float> > bbox;
-  int anchor_num = anchor_scale_.size()*anchor_ratio_.size();
-  
-  for (int k = 0; k < anchor_num; k++)
-  {
-    float w = anchor_boxes_[4 * k + 2] - anchor_boxes_[4 * k] + 1;
-    float h = anchor_boxes_[4 * k + 3] - anchor_boxes_[4 * k + 1] + 1;
-    float x_ctr = anchor_boxes_[4 * k] + 0.5 * (w - 1);
-    float y_ctr = anchor_boxes_[4 * k + 1] + 0.5 * (h - 1);
 
-    for (int i = 0; i < height; i++)
-    {
-      for (int j = 0; j < width; j++)
-      {
-        if (score[anchor_num*height*width + (k * height + i) * width + j] >= thresh)
-        {
-          vector<float> tmp_anchor;
-          vector<float> tmp_bbox;
+  for (int b = 0; b < batch; ++b) {
+    auto batched_score = score + bottom[0]->offset(b);
+    auto batched_bbox_deltas = bbox_deltas + bottom[1]->offset(b);
+    vector<vector<float>> select_anchor;
+    vector<float> confidence;
+    vector<vector<float>> bbox;
+    int anchor_num = anchor_scale_.size() * anchor_ratio_.size();
 
-          tmp_anchor.push_back(j * feat_stride_+ x_ctr);
-          tmp_anchor.push_back(i * feat_stride_+ y_ctr);
-          tmp_anchor.push_back(w);
-          tmp_anchor.push_back(h);
-          select_anchor.push_back(tmp_anchor);
-          confidence.push_back(score[anchor_num*height*width + (k * height + i) * width + j]);
-          tmp_bbox.push_back(bbox_deltas[(4 * k * height + i) * width + j]);
-          tmp_bbox.push_back(bbox_deltas[((4 * k +1) * height + i) * width + j]);
-          tmp_bbox.push_back(bbox_deltas[((4 * k + 2) * height + i) * width + j]);
-          tmp_bbox.push_back(bbox_deltas[((4 * k + 3) * height + i) * width + j]);
-          bbox.push_back(tmp_bbox);
+    for (int k = 0; k < anchor_num; k++) {
+      float w = anchor_boxes_[4 * k + 2] - anchor_boxes_[4 * k] + 1;
+      float h = anchor_boxes_[4 * k + 3] - anchor_boxes_[4 * k + 1] + 1;
+      float x_ctr = anchor_boxes_[4 * k] + 0.5 * (w - 1);
+      float y_ctr = anchor_boxes_[4 * k + 1] + 0.5 * (h - 1);
+
+      for (int i = 0; i < height; i++) {
+        for (int j = 0; j < width; j++) {
+          if (batched_score[anchor_num*height*width + (k * height + i) * width + j] >= thresh) {
+            vector<float> tmp_anchor;
+            vector<float> tmp_bbox;
+
+            tmp_anchor.push_back(j * feat_stride_+ x_ctr);
+            tmp_anchor.push_back(i * feat_stride_+ y_ctr);
+            tmp_anchor.push_back(w);
+            tmp_anchor.push_back(h);
+            select_anchor.push_back(tmp_anchor);
+            confidence.push_back(batched_score[anchor_num*height*width + (k * height + i) * width + j]);
+            tmp_bbox.push_back(batched_bbox_deltas[(4 * k * height + i) * width + j]);
+            tmp_bbox.push_back(batched_bbox_deltas[((4 * k +1) * height + i) * width + j]);
+            tmp_bbox.push_back(batched_bbox_deltas[((4 * k + 2) * height + i) * width + j]);
+            tmp_bbox.push_back(batched_bbox_deltas[((4 * k + 3) * height + i) * width + j]);
+            bbox.push_back(tmp_bbox);
+          }
         }
       }
     }
-  }
-  vector<vector<float> > pred_boxes;
-  bbox_transform_inv(input_w_, input_h_, bbox, select_anchor, pred_boxes);
-  
-  apply_nms(pred_boxes, confidence);
+    vector<vector<float> > pred_boxes;
+    bbox_transform_inv(input_w_, input_h_, bbox, select_anchor, pred_boxes);
+    
+    apply_nms(pred_boxes, confidence);
 
-  int num = pred_boxes.size() > rpn_nms_post_top_n_ ? rpn_nms_post_top_n_ : pred_boxes.size();
+    int num = pred_boxes.size() > rpn_nms_post_top_n_ ? rpn_nms_post_top_n_ : pred_boxes.size();
 
-  Dtype* top_data = top[0]->mutable_cpu_data();
-  for (int i = 0; i < num; i++)
-  {
-    top_data[5 * i] = 0;
-    top_data[5 * i + 1] = pred_boxes[i][0];
-    top_data[5 * i + 2] = pred_boxes[i][1];
-    top_data[5 * i + 3] = pred_boxes[i][2];
-    top_data[5 * i + 4] = pred_boxes[i][3];
+    Dtype* top_data = top[0]->mutable_cpu_data();
+    auto batched_top_data = top_data + top[0]->offset(b);
+    for (int i = 0; i < num; i++)
+    {
+      batched_top_data[5 * i] = b;
+      batched_top_data[5 * i + 1] = pred_boxes[i][0];
+      batched_top_data[5 * i + 2] = pred_boxes[i][1];
+      batched_top_data[5 * i + 3] = pred_boxes[i][2];
+      batched_top_data[5 * i + 4] = pred_boxes[i][3];
+    }
   }
 }
 
