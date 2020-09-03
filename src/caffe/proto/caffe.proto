@@ -1128,6 +1128,9 @@ message BNParameter {
     CUDNN = 2;
   }
   optional Engine engine = 6 [default = DEFAULT];
+  // compatible with segnet BN layer
+  optional FillerParameter scale_filler = 8;
+  optional FillerParameter shift_filler = 9;
 }
 
 message ContrastiveLossParameter {

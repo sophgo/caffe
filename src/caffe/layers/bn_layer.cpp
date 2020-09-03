@@ -27,16 +27,28 @@ void BNLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
     shape.push_back(bottom[0]->channels());
     shape.push_back(1);
     shape.push_back(1);
-    // slope
     this->blobs_[0].reset(new Blob<Dtype>(shape));
-    shared_ptr<Filler<Dtype> > slope_filler(GetFiller<Dtype>(
-        this->layer_param_.bn_param().slope_filler()));
-    slope_filler->Fill(this->blobs_[0].get());
-    // bias
     this->blobs_[1].reset(new Blob<Dtype>(shape));
-    shared_ptr<Filler<Dtype> > bias_filler(GetFiller<Dtype>(
-        this->layer_param_.bn_param().bias_filler()));
-    bias_filler->Fill(this->blobs_[1].get());
+
+    if(this->layer_param_.bn_param().has_slope_filler() && this->layer_param_.bn_param().has_bias_filler()) {
+        // slope
+        shared_ptr<Filler<Dtype> > slope_filler(GetFiller<Dtype>(
+            this->layer_param_.bn_param().slope_filler()));
+        slope_filler->Fill(this->blobs_[0].get());
+        // bias
+        shared_ptr<Filler<Dtype> > bias_filler(GetFiller<Dtype>(
+            this->layer_param_.bn_param().bias_filler()));
+        bias_filler->Fill(this->blobs_[1].get());
+    } else {
+        // slope
+        shared_ptr<Filler<Dtype> > slope_filler(GetFiller<Dtype>(
+            this->layer_param_.bn_param().scale_filler()));
+        slope_filler->Fill(this->blobs_[0].get());
+        // bias
+        shared_ptr<Filler<Dtype> > bias_filler(GetFiller<Dtype>(
+            this->layer_param_.bn_param().shift_filler()));
+        bias_filler->Fill(this->blobs_[1].get());
+    }
 
 
     if (this->layer_param_.bn_param().bn_mode() != BNParameter_BNMode_INFERENCE) {
