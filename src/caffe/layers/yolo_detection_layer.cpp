@@ -1,5 +1,7 @@
 #include "caffe/layers/yolo_detection_layer.hpp"
 
+#include <sstream>
+
 namespace caffe {
 
 static inline float exp_fast(float x) {
@@ -21,10 +23,10 @@ static inline float _sigmoid(float x, bool fast) {
 
 static inline float _softmax(float *probs, float *data, int input_stride,
     int num_of_class, int *max_cls, bool fast) {
-  float x[80];
+  float x[num_of_class];
   float max_x = -INFINITY;
   float min_x = INFINITY;
-  for (int i = 0; i < 80; i++) {
+  for (int i = 0; i < num_of_class; i++) {
     x[i] = data[i * input_stride];
     if (x[i] > max_x) {
       max_x = x[i];
@@ -34,9 +36,9 @@ static inline float _softmax(float *probs, float *data, int input_stride,
     }
   }
   #define t (-100.0f)
-  float exp_x[80];
+  float exp_x[num_of_class];
   float sum = 0;
-  for (int i = 0; i < 80; i++) {
+  for (int i = 0; i < num_of_class; i++) {
     x[i] = x[i] - max_x;
     if (min_x < t)
       x[i] = x[i] / min_x * t;
@@ -47,7 +49,7 @@ static inline float _softmax(float *probs, float *data, int input_stride,
     sum += exp_x[i];
   }
   float max_prob = 0;
-  for (int i = 0; i < 80; i++) {
+  for (int i = 0; i < num_of_class; i++) {
     probs[i] =exp_x[i] / sum;
     if (probs[i] > max_prob) {
       max_prob = probs[i];
@@ -58,11 +60,11 @@ static inline float _softmax(float *probs, float *data, int input_stride,
 }
 
 // feature in shape [3][5+80][grid_size][grid_size]
-#define GET_INDEX(cell_idx, box_idx_in_cell, data_idx, num_cell) \
-    (box_idx_in_cell * 85 * num_cell + data_idx * num_cell + cell_idx)
+#define GET_INDEX(cell_idx, box_idx_in_cell, data_idx, num_cell, num_of_class) \
+    (box_idx_in_cell * (num_of_class + 5) * num_cell + data_idx * num_cell + cell_idx)
 
 static void process_feature(detection *det, int *det_idx, float *feature,
-    std::vector<int> grid_size, const float* anchor,
+    std::vector<int> grid_size, float* anchor,
     std::vector<int> yolo_size, int num_of_class, float obj_threshold) {
   int yolo_w = yolo_size[1];
   int yolo_h = yolo_size[0];
@@ -70,7 +72,7 @@ static void process_feature(detection *det, int *det_idx, float *feature,
   std::cout << "grid_size_w: " <<  grid_size[1] << std::endl;
   std::cout << "obj_threshold: " << obj_threshold << std::endl;
   int num_boxes_per_cell = 3;
-  assert(num_of_class == 80);
+  //assert(num_of_class == 80);
 
   // 255 = 3 * (5 + 80)
   // feature in shape [3][5+80][grid_size][grid_size]
@@ -87,7 +89,7 @@ static void process_feature(detection *det, int *det_idx, float *feature,
   int hit = 0, hit2 = 0;
   for (int i = 0; i < num_cell; i++) {
     for (int j = 0; j < num_boxes_per_cell; j++) {
-      float box_confidence = _sigmoid(feature[GET_INDEX(i, j, CONF_INDEX, num_cell)], false);
+      float box_confidence = _sigmoid(feature[GET_INDEX(i, j, CONF_INDEX, num_cell, num_of_class)], false);
       if (box_confidence < obj_threshold) {
         continue;
       }
@@ -95,7 +97,7 @@ static void process_feature(detection *det, int *det_idx, float *feature,
       float box_class_probs[80];
       int box_max_cls;
       float box_max_prob = _softmax(box_class_probs,
-              &feature[GET_INDEX(i, j, CLS_INDEX, num_cell)],
+              &feature[GET_INDEX(i, j, CLS_INDEX, num_cell, num_of_class)],
               num_cell, num_of_class, &box_max_cls, false);
       float box_max_score = box_confidence * box_max_prob;
       if (box_max_score < obj_threshold) {
@@ -104,17 +106,17 @@ static void process_feature(detection *det, int *det_idx, float *feature,
       // get coord now
       int grid_x = i % grid_size[1];
       int grid_y = i / grid_size[1];
-      float box_x = _sigmoid(feature[GET_INDEX(i, j, COORD_X_INDEX, num_cell)], false);
+      float box_x = _sigmoid(feature[GET_INDEX(i, j, COORD_X_INDEX, num_cell, num_of_class)], false);
       box_x += grid_x;
       box_x /= grid_size[1];
-      float box_y = _sigmoid(feature[GET_INDEX(i, j, COORD_Y_INDEX, num_cell)], false);
+      float box_y = _sigmoid(feature[GET_INDEX(i, j, COORD_Y_INDEX, num_cell, num_of_class)], false);
       box_y += grid_y;
       box_y /= grid_size[0];
       // anchor is in shape [3][2]
-      float box_w = exp(feature[GET_INDEX(i, j, COORD_W_INDEX, num_cell)]);
+      float box_w = exp(feature[GET_INDEX(i, j, COORD_W_INDEX, num_cell, num_of_class)]);
       box_w *= anchor[j*2];
       box_w /= yolo_w;
-      float box_h = exp(feature[GET_INDEX(i, j, COORD_H_INDEX, num_cell)]);
+      float box_h = exp(feature[GET_INDEX(i, j, COORD_H_INDEX, num_cell, num_of_class)]);
       box_h *= anchor[j*2 + 1];
       box_h /= yolo_h;
       hit2 ++;
@@ -203,6 +205,14 @@ void YoloDetectionLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype> *> &bottom, 
   net_input_h_ = this->layer_param_.yolo_detection_param().net_input_h();
   net_input_w_ = this->layer_param_.yolo_detection_param().net_input_w();
   tiny_ = this->layer_param_.yolo_detection_param().tiny();
+  class_num_ = this->layer_param_.yolo_detection_param().class_num();
+  auto anchors = this->layer_param_.yolo_detection_param().anchors();
+  anchors_.clear();
+  std::istringstream iss(anchors);
+  std::string s;
+  while (std::getline(iss, s, ',')) {
+    anchors_.push_back(atof(s.c_str()));
+  }
 }
 
 template <typename Dtype>
@@ -219,16 +229,31 @@ void YoloDetectionLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
   auto top_data = top[0]->mutable_cpu_data();
   auto batch = top[0]->num();
 
-  const float anchors[3][6] = {
-      {10,13,   16,30,    33,23},      // layer106-conv (52*52)
-      {30,61,   62,45,    59,119},     // layer94-conv  (26*26)
-      {116,90,  156,198,  373,326}     // layer82-conv  (13*13)
-  };
+  size_t bottom_count = bottom.size();
 
-  const float tiny_anchors[2][6] = {
-      {10,14,  23,27,  37,58}, // layer23-conv (26*26)
-      {81,82,  135,169,  344,319} // layer16-conv (13*13)
-  };
+  float anchors[bottom_count][6];
+  if (!tiny_) {
+    if (anchors_.size() == 0) {
+      anchors_ = {
+          10,13,   16,30,    33,23,      // layer106-conv (52*52)
+          30,61,   62,45,    59,119,     // layer94-conv  (26*26)
+          116,90,  156,198,  373,326     // layer82-conv  (13*13)
+      };
+    }
+  } else {
+    if (anchors_.size() == 0) {
+      anchors_ = {
+          10,14,  23,27,    37,58,        // layer23-conv (26*26)
+          81,82,  135,169,  344,319       // layer16-conv (13*13)
+      };
+    }
+  }
+
+  for (size_t i = 0; i < bottom_count; ++i) {
+    for (size_t j = 0; j < 6; ++j) {
+      anchors[i][j] = anchors_[i*6+j];
+    }
+  }
 
   for (int b = 0; b < batch; ++b) {
     std::vector<std::vector<int>> grid_size;
@@ -247,13 +272,9 @@ void YoloDetectionLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
     detection dets[MAX_DET];
     int det_raw_idx = 0;
     for (int i = 0; i < features.size(); i++) {
-      if (!tiny_) {
-        process_feature(det_raw, &det_raw_idx, features[i].data(), grid_size[i],
-          &anchors[i][0], {net_input_h_, net_input_w_},  80, obj_threshold_);
-      } else {
-        process_feature(det_raw, &det_raw_idx, features[i].data(), grid_size[i],
-          &tiny_anchors[i][0], {net_input_h_, net_input_w_},  80, obj_threshold_);
-      }
+      process_feature(det_raw, &det_raw_idx, features[i].data(), grid_size[i],
+        &anchors[i][0], {net_input_h_, net_input_w_}, class_num_, obj_threshold_);
+
     }
     nms(det_raw, det_raw_idx, nms_threshold_);
     int det_idx = 0;

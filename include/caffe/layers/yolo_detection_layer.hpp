@@ -50,6 +50,8 @@ private:
   int net_input_w_;
   int keep_topk_;
   bool tiny_;
+  uint32_t class_num_;
+  std::vector<float> anchors_;
 };
 
 }  // namespace caffe

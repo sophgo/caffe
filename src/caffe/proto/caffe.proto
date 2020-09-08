@@ -2388,6 +2388,8 @@ message YoloDetectionParameter {
   optional uint32 keep_topk = 5;
   optional bool spp_net = 6 [default=false];
   optional bool tiny = 7 [default=false];
+  optional uint32 class_num = 8 [default=80];
+  optional string anchors = 9 [default=""];
 }
 
 message FrcnDetectionParameter {
