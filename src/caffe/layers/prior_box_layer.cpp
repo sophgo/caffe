@@ -54,8 +54,11 @@ void PriorBoxLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
     min_sizes_.push_back(prior_box_param.min_size(i));
     CHECK_GT(min_sizes_.back(), 0) << "min_size must be positive.";
   }
+  use_default_aspect_ratio_ = prior_box_param.use_default_aspect_ratio();
   aspect_ratios_.clear();
-  aspect_ratios_.push_back(1.);
+  if (use_default_aspect_ratio_) {
+    aspect_ratios_.push_back(1.);
+  }
   flip_ = prior_box_param.flip();
   for (int i = 0; i < prior_box_param.aspect_ratio_size(); ++i) {
     float ar = prior_box_param.aspect_ratio(i);
@@ -185,15 +188,17 @@ void PriorBoxLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
       for (int s = 0; s < min_sizes_.size(); ++s) {
         int min_size_ = min_sizes_[s];
         // first prior: aspect_ratio = 1, size = min_size
-        box_width = box_height = min_size_;
-        // xmin
-        top_data[idx++] = (center_x - box_width / 2.) / img_width;
-        // ymin
-        top_data[idx++] = (center_y - box_height / 2.) / img_height;
-        // xmax
-        top_data[idx++] = (center_x + box_width / 2.) / img_width;
-        // ymax
-        top_data[idx++] = (center_y + box_height / 2.) / img_height;
+        if (use_default_aspect_ratio_) {
+          box_width = box_height = min_size_;
+          // xmin
+          top_data[idx++] = (center_x - box_width / 2.) / img_width;
+          // ymin
+          top_data[idx++] = (center_y - box_height / 2.) / img_height;
+          // xmax
+          top_data[idx++] = (center_x + box_width / 2.) / img_width;
+          // ymax
+          top_data[idx++] = (center_y + box_height / 2.) / img_height;
+        }
 
         if (max_sizes_.size() > 0) {
           CHECK_EQ(min_sizes_.size(), max_sizes_.size());

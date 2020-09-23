@@ -106,6 +106,7 @@ class PriorBoxLayer : public Layer<Dtype> {
   bool flip_;
   int num_priors_;
   bool clip_;
+  bool use_default_aspect_ratio_;
   vector<float> variance_;
 
   int img_w_;
