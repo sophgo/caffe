@@ -657,6 +657,8 @@ message LayerParameter {
   optional FrcnDetectionParameter frcn_detection_param = 305;
   // for yolov4
   optional MishParameter mish_param = 306;
+  // for MatMul
+  optional MatMulParameter matmul_param = 307;
 }
 
 message RegionLossParameter{
@@ -2410,4 +2412,10 @@ message MishParameter {
     CUDNN = 2;
   }
   optional Engine engine = 2 [default = DEFAULT];
+}
+
+message MatMulParameter {
+  optional uint32 dim_1 = 1 [default = 1];
+  optional uint32 dim_2 = 2 [default = 1];
+  optional uint32 dim_3 = 3 [default = 1];
 }
