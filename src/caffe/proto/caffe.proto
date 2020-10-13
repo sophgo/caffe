@@ -2396,6 +2396,7 @@ message YoloDetectionParameter {
   optional bool tiny = 7 [default=false];
   optional uint32 class_num = 8 [default=80];
   optional string anchors = 9 [default=""];
+  optional bool yolo_v4 = 10 [default=false];
 }
 
 message FrcnDetectionParameter {

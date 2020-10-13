@@ -205,6 +205,7 @@ void YoloDetectionLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype> *> &bottom, 
   net_input_h_ = this->layer_param_.yolo_detection_param().net_input_h();
   net_input_w_ = this->layer_param_.yolo_detection_param().net_input_w();
   tiny_ = this->layer_param_.yolo_detection_param().tiny();
+  yolo_v4_ = this->layer_param_.yolo_detection_param().yolo_v4();
   class_num_ = this->layer_param_.yolo_detection_param().class_num();
   auto anchors = this->layer_param_.yolo_detection_param().anchors();
   anchors_.clear();
@@ -234,11 +235,23 @@ void YoloDetectionLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
   float anchors[bottom_count][6];
   if (!tiny_) {
     if (anchors_.size() == 0) {
-      anchors_ = {
+      if (yolo_v4_) {
+
+        // order by prototext
+        // refer yolov4.cfg for detail anchor setting
+        anchors_ = {
+          142, 110, 192, 243, 459, 401, // layer161-conv
+          36, 75, 76, 55, 72, 146,// layer150-conv
+          12, 16, 19, 36, 40, 28, // layer139-conv
+        };
+      }
+      else {
+        anchors_ = {
           10,13,   16,30,    33,23,      // layer106-conv (52*52)
           30,61,   62,45,    59,119,     // layer94-conv  (26*26)
           116,90,  156,198,  373,326     // layer82-conv  (13*13)
-      };
+        };
+      }
     }
   } else {
     if (anchors_.size() == 0) {

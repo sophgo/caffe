@@ -52,6 +52,7 @@ private:
   bool tiny_;
   uint32_t class_num_;
   std::vector<float> anchors_;
+  bool yolo_v4_;
 };
 
 }  // namespace caffe
