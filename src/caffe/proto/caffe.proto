@@ -615,6 +615,7 @@ message LayerParameter {
   optional RecurrentParameter recurrent_param = 146;
   optional ReductionParameter reduction_param = 136;
   optional ReLUParameter relu_param = 123;
+  optional ReLU6Parameter relu6_param = 167;
   optional ReshapeParameter reshape_param = 133;
   optional ROIPoolingParameter roi_pooling_param = 154;
   optional ScaleParameter scale_param = 142;
@@ -1927,6 +1928,25 @@ message ReLUParameter {
   optional bool fuse = 3 [default = false];
 }
 
+// Message that stores parameters used by ReLU6Layer
+message ReLU6Parameter {
+  // Allow non-zero slope for negative inputs to speed up optimization
+  // Described in:
+  // Maas, A. L., Hannun, A. Y., & Ng, A. Y. (2013). Rectifier nonlinearities
+  // improve neural network acoustic models. In ICML Workshop on Deep Learning
+  // for Audio, Speech, and Language Processing.
+  optional float negative_slope = 1 [default = 0];
+  enum Engine {
+    DEFAULT = 0;
+    CAFFE = 1;
+    CUDNN = 2;
+    MKL2017 = 3;
+    MKLDNN = 4;
+  }
+  optional Engine engine = 2 [default = DEFAULT];
+  optional bool fuse = 3 [default = false];
+}
+
 message ReshapeParameter {
   // Specify the output dimensions. If some of the dimensions are set to 0,
   // the corresponding dimension from the bottom layer is used (unchanged).
@@ -2258,6 +2278,7 @@ message V1LayerParameter {
   optional PoolingParameter pooling_param = 19;
   optional PowerParameter power_param = 21;
   optional ReLUParameter relu_param = 30;
+  optional ReLU6Parameter relu6_param = 167;
   optional SigmoidParameter sigmoid_param = 38;
   optional SoftmaxParameter softmax_param = 39;
   optional SliceParameter slice_param = 31;
