@@ -604,6 +604,7 @@ message LayerParameter {
   optional MultiBoxLossParameter multibox_loss_param = 201;
   optional MVNParameter mvn_param = 120;
   optional NormalizeParameter norm_param = 206;
+  optional PaddingParameter padding_param = 166;
   optional ParameterParameter parameter_param = 145;
   optional PermuteParameter permute_param = 202;
   optional PoolingParameter pooling_param = 121;
@@ -1717,6 +1718,18 @@ message NormalizeParameter {
   optional float eps = 4 [default = 1e-10];
 }
 
+message PaddingParameter {
+  enum PadMethod {
+    CONSTANT = 0; // constant border fill
+  }
+  optional PadMethod pad_method = 1 [default = CONSTANT]; // The padding method
+  optional uint32 pad_l = 2 [default = 0]; // number of columns to add to the left
+  optional uint32 pad_r = 3 [default = 0]; // number of columns to add to the right
+  optional uint32 pad_t = 4 [default = 0]; // number of rows to add to the top 
+  optional uint32 pad_b = 5 [default = 0]; // number of rows to add to the bottom
+  optional int32 pad_value = 6 [default = 0];
+}
+
 message ParameterParameter {
   optional BlobShape shape = 1;
 }
@@ -2275,6 +2288,7 @@ message V1LayerParameter {
   optional LRNParameter lrn_param = 18;
   optional MemoryDataParameter memory_data_param = 22;
   optional MVNParameter mvn_param = 34;
+  optional PaddingParameter padding_param = 166;
   optional PoolingParameter pooling_param = 19;
   optional PowerParameter power_param = 21;
   optional ReLUParameter relu_param = 30;
