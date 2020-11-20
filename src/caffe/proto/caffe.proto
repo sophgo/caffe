@@ -661,6 +661,12 @@ message LayerParameter {
   optional MishParameter mish_param = 306;
   // for MatMul
   optional MatMulParameter matmul_param = 307;
+  // for Reverse
+  optional ReverseParameter reverse_param = 309;
+  // for LSTM
+  optional LSTMParameter lstm_param = 310;
+  // for ContinuationIndicator
+  optional ContinuationIndicatorParameter continuation_indicator_param = 311;
 }
 
 message RegionLossParameter{
@@ -1725,7 +1731,7 @@ message PaddingParameter {
   optional PadMethod pad_method = 1 [default = CONSTANT]; // The padding method
   optional uint32 pad_l = 2 [default = 0]; // number of columns to add to the left
   optional uint32 pad_r = 3 [default = 0]; // number of columns to add to the right
-  optional uint32 pad_t = 4 [default = 0]; // number of rows to add to the top 
+  optional uint32 pad_t = 4 [default = 0]; // number of rows to add to the top
   optional uint32 pad_b = 5 [default = 0]; // number of rows to add to the bottom
   optional int32 pad_value = 6 [default = 0];
 }
@@ -2454,4 +2460,34 @@ message MatMulParameter {
   optional uint32 dim_1 = 1 [default = 1];
   optional uint32 dim_2 = 2 [default = 1];
   optional uint32 dim_3 = 3 [default = 1];
+}
+
+message ReverseParameter {
+  // axis controls the data axis which shall be inverted.
+  // The layout of the content will not be inverted
+  //
+  // The default axis is 0 that means:
+  //   data_previous[n] == data_afterwards[N - n -1]
+  // where N is the shape of axis(n)
+  //
+  // Usually this layer will be used with recurrent layers to invert the
+  // time axis which is axis 0
+  // This layer will therefore swap the order in time but not the
+  // order of the actual data.
+  optional int32 axis = 1 [default = 0];
+}
+
+// Message that stores parameters used by LSTMParameter
+message LSTMParameter {
+  optional uint32 num_output = 1; // The number of outputs for the layer
+  optional float clipping_threshold = 2 [default = 0.0];
+  optional FillerParameter weight_filler = 3; // The filler for weight
+  optional FillerParameter bias_filler = 4; // The filler for the bias
+  optional uint32 batch_size = 5 [default = 1];
+}
+
+message ContinuationIndicatorParameter{
+  optional int32 time_step=1;
+  optional int32 batch_size=2 [default=1];
+  optional bool flag=3 [default=false];
 }
