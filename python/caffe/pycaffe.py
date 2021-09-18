@@ -282,24 +282,30 @@ def _Net_batch(self, blobs):
     ------
     batch: {blob name: list of blobs} dict for a single batch.
     """
-    num = len(six.next(six.itervalues(blobs)))
-    batch_size = six.next(six.itervalues(self.blobs)).shape[0]
-    remainder = num % batch_size
-    num_batches = num // batch_size
+    net_blist = []
+    blobs_blist = []
+    for name in blobs:
+       net_blist.append(self.blobs[name].shape[0])
+       blobs_blist.append(blobs[name].shape[0])
+
+    remainder = blobs_blist[0] % net_blist[0]
+    num_batches = blobs_blist[0] // net_blist[0]
+    if num_batches == 1:
+        yield blobs
+        return
 
     # Yield full batches.
     for b in range(num_batches):
-        i = b * batch_size
-        yield {name: blobs[name][i:i + batch_size] for name in blobs}
+        yield {name: blobs[name][b*batch_size:(b+1)*batch_size] for batch_size, name in zip(net_blist, blobs)}
 
     # Yield last padded batch, if any.
     if remainder > 0:
+        remain_list = [b % n for b, n in zip(blobs_blist, net_blist)]
+        padding_list = [n - r for n, r in zip(net_blist, remain_list)]
         padded_batch = {}
-        for name in blobs:
-            padding = np.zeros((batch_size - remainder,)
-                               + blobs[name].shape[1:])
-            padded_batch[name] = np.concatenate([blobs[name][-remainder:],
-                                                 padding])
+        for name, r, p in zip(blobs, remain_list, padding_list):
+            padding = np.zeros((p,) + blobs[name].shape[1:])
+            padded_batch[name] = np.concatenate([blobs[name][-r:], padding])
         yield padded_batch
 
 def _Net_get_id_name(func, field):
