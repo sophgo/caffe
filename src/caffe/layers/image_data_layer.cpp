@@ -1,19 +1,20 @@
-#ifdef USE_OPENCV
-#include <opencv2/core/core.hpp>
-
 #include <fstream>  // NOLINT(readability/streams)
 #include <iostream>  // NOLINT(readability/streams)
 #include <string>
 #include <utility>
 #include <vector>
 
+#include "caffe/layers/image_data_layer.hpp"
+
+
+#ifdef USE_OPENCV
 #include "caffe/data_transformer.hpp"
 #include "caffe/layers/base_data_layer.hpp"
-#include "caffe/layers/image_data_layer.hpp"
 #include "caffe/util/benchmark.hpp"
 #include "caffe/util/io.hpp"
 #include "caffe/util/math_functions.hpp"
 #include "caffe/util/rng.hpp"
+#include <opencv2/core/core.hpp>
 
 namespace caffe {
 
@@ -170,6 +171,37 @@ void ImageDataLayer<Dtype>::load_batch(Batch<Dtype>* batch) {
   DLOG(INFO) << "Prefetch batch: " << batch_timer.MilliSeconds() << " ms.";
   DLOG(INFO) << "     Read time: " << read_time / 1000 << " ms.";
   DLOG(INFO) << "Transform time: " << trans_time / 1000 << " ms.";
+}
+
+INSTANTIATE_CLASS(ImageDataLayer);
+REGISTER_LAYER_CLASS(ImageData);
+
+}  // namespace caffe
+#else
+namespace caffe {
+
+template <typename Dtype>
+void ImageDataLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
+      const vector<Blob<Dtype>*>& top) {
+  int crop_size = this->layer_param_.transform_param().crop_size();
+  if (crop_size != 0) {
+    vector<int> top_shape = {1, 3, crop_size, crop_size};
+    top[0]->Reshape(top_shape);
+  } else {
+    auto &param = this->layer_param_.image_data_param();
+    int new_height = param.new_height();
+    int new_width  = param.new_width();
+    if (new_height == 0 && new_width != 0) {
+      new_height = new_width;
+    } else if (new_height != 0 && new_width == 0) {
+      new_width = new_height;
+    } else if (new_height == 0 && new_width == 0) {
+      new_width = 224;
+      new_height = 224;
+    }
+    vector<int> top_shape = {1, 3, new_height, new_width};
+    top[0]->Reshape(top_shape);
+  }
 }
 
 INSTANTIATE_CLASS(ImageDataLayer);
